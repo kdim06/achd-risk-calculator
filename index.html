@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ACHD CPET 5-year Mortality Risk Calculator</title>
+  <meta name="description" content="ACHD mortality risk calculator using CPET parameters and age. Runs locally in your browser; no data is transmitted." />
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#ffffff; --text:#0f172a; --muted:#475569;
+      --border:#e2e8f0; --shadow:0 1px 2px rgba(15,23,42,.06);
+      --accent:#0f172a;
+      --warnbg:#fff7ed; --warnbd:#fed7aa;
+      --goodbg:#f0fdf4; --goodbd:#bbf7d0;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--text);}
+    .wrap{max-width:980px; margin:0 auto; padding:28px 16px 64px;}
+    header{margin-bottom:18px;}
+    h1{font-size:22px; margin:0 0 6px;}
+    .sub{margin:0; color:var(--muted); line-height:1.4;}
+    .grid{display:grid; grid-template-columns:1fr; gap:14px;}
+    @media(min-width:900px){ .grid{grid-template-columns:1.1fr 0.9fr;} }
+
+    .card{
+      background:var(--card); border:1px solid var(--border);
+      border-radius:16px; padding:16px; box-shadow:var(--shadow);
+    }
+    h2{font-size:16px; margin:0 0 10px;}
+    .row{display:grid; grid-template-columns:1fr; gap:12px;}
+    @media(min-width:650px){ .row{grid-template-columns:1fr 1fr;} }
+
+    .field label{
+      display:flex; justify-content:space-between; gap:10px;
+      font-weight:650; font-size:13px; margin-bottom:6px;
+    }
+    .hint{font-weight:550; color:var(--muted);}
+    input[type="number"]{
+      width:100%; padding:12px 12px; border-radius:12px;
+      border:1px solid var(--border); font-size:16px; outline:none;
+    }
+    input[type="number"]:focus{
+      border-color:#94a3b8; box-shadow:0 0 0 3px rgba(148,163,184,.25);
+    }
+    .small{font-size:12px; color:var(--muted); margin-top:6px; line-height:1.35;}
+
+    .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}
+    button{
+      border:1px solid var(--border); background:var(--accent); color:#fff;
+      padding:10px 12px; border-radius:12px; font-weight:700; cursor:pointer; font-size:14px;
+    }
+    button.secondary{background:#fff; color:var(--text);}
+    button:disabled{opacity:.6; cursor:not-allowed}
+
+    .pill{
+      display:inline-block; padding:6px 10px; border-radius:999px;
+      font-weight:750; font-size:12px; border:1px solid var(--border);
+    }
+    .big{font-size:30px; font-weight:800; margin:8px 0 2px;}
+    .muted{color:var(--muted); line-height:1.4;}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
+
+    table{width:100%; border-collapse:collapse; margin-top:10px;}
+    td, th{padding:10px 8px; border-top:1px solid var(--border); text-align:left; font-size:14px;}
+    th{font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); font-weight:800;}
+    .right{text-align:right;}
+
+    .callout{
+      margin-top:12px; border-radius:14px; padding:12px;
+      border:1px solid var(--warnbd); background:var(--warnbg);
+      font-size:12px; color:var(--muted); line-height:1.45;
+    }
+    .ok{
+      border:1px solid var(--goodbd); background:var(--goodbg);
+    }
+    details{margin-top:12px;}
+    details summary{cursor:pointer; font-weight:750; color:var(--text); }
+    .footer-note{margin-top:12px; font-size:12px; color:var(--muted); line-height:1.45;}
+    .badge{
+      display:inline-block; font-size:11px; padding:4px 8px; border:1px solid var(--border);
+      border-radius:999px; color:var(--muted); font-weight:700;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <h1>ACHD Mortality Risk Calculator (CPET + Age)</h1>
+      <p class="sub">
+        Computes a Cox-model linear predictor (LP) from peak VO₂, peak HR, VE/VCO₂ slope, and age,
+        and converts to absolute mortality using baseline survival S₀(t). Runs locally in your browser; no data is transmitted.
+      </p>
+    </header>
+
+    <div class="grid">
+      <!-- INPUTS -->
+      <section class="card">
+        <h2>Inputs</h2>
+
+        <div class="row">
+          <div class="field">
+            <label>Age at CPET <span class="hint">years</span></label>
+            <input id="age" type="number" min="14" max="100" step="1" placeholder="e.g., 32">
+            <div class="small">Typical: 16–80</div>
+          </div>
+
+          <div class="field">
+            <label>Peak VO₂ <span class="hint">mL/kg/min</span></label>
+            <input id="vo2" type="number" min="5" max="70" step="0.1" placeholder="e.g., 18.4">
+            <div class="small">Typical: 8–40</div>
+          </div>
+
+          <div class="field">
+            <label>Peak heart rate <span class="hint">bpm</span></label>
+            <input id="hr" type="number" min="40" max="230" step="1" placeholder="e.g., 155">
+            <div class="small">Typical: 90–190</div>
+          </div>
+
+          <div class="field">
+            <label>VE/VCO₂ slope <span class="hint">unitless</span></label>
+            <input id="vevco2" type="number" min="10" max="80" step="0.1" placeholder="e.g., 34.2">
+            <div class="small">Typical: 20–50</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="calcBtn" type="button">Calculate</button>
+          <button id="resetBtn" class="secondary" type="button">Reset</button>
+          <button id="copyBtn" class="secondary" type="button">Copy summary</button>
+        </div>
+
+        <details>
+          <summary>Model details</summary>
+          <div class="footer-note">
+            <div><span class="badge">LP</span></div>
+            <div class="mono" style="margin-top:6px;">
+              LP = −0.0808·(Peak VO₂) + 0.0104·(VE/VCO₂ slope) − 0.0117·(Peak HR) + 0.0141·(Age)
+            </div>
+            <div style="margin-top:10px;"><span class="badge">Absolute risk</span></div>
+            <div class="mono" style="margin-top:6px;">
+              Risk(t) = 1 − S₀(t) ^ exp(LP)
+            </div>
+            <div class="footer-note">
+              Baseline survival values S₀(t) must come from the model’s baseline survival / KM baseline.
+              This page ships with approximate S₀(t) values read from your provided KM (0–5y). Update them if you have exact values.
+            </div>
+          </div>
+        </details>
+
+        <div class="callout">
+          <strong>Clinical disclaimer:</strong> Decision support only. Check units and applicability to your patient and cohort.
+          If used for patient-facing decisions, ensure governance, validation, and appropriate regulatory oversight.
+        </div>
+      </section>
+
+      <!-- OUTPUT -->
+      <aside class="card">
+        <h2>Output</h2>
+        <div id="emptyState" class="muted">Enter values and click <strong>Calculate</strong>.</div>
+
+        <div id="result" style="display:none;">
+          <div class="big" id="headlineRisk">—</div>
+          <div class="pill" id="riskBand">—</div>
+
+          <table aria-label="Predicted mortality over time">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th class="right">Mortality</th>
+                <th class="right">Survival</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1 year</td>
+                <td class="right"><strong id="m1">—</strong></td>
+                <td class="right" id="s1">—</td>
+              </tr>
+              <tr>
+                <td>3 years</td>
+                <td class="right"><strong id="m3">—</strong></td>
+                <td class="right" id="s3">—</td>
+              </tr>
+              <tr>
+                <td>5 years</td>
+                <td class="right"><strong id="m5">—</strong></td>
+                <td class="right" id="s5">—</td>
+              </tr>
+              <tr>
+                <td>10 years</td>
+                <td class="right"><strong id="m10">—</strong></td>
+                <td class="right" id="s10">—</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="footer-note">
+            <div><strong>Score (LP):</strong> <span class="mono" id="lp">—</span></div>
+            <div style="margin-top:6px;"><strong>Notes:</strong> <span id="interp">—</span></div>
+          </div>
+
+          <div id="baselineNote" class="callout ok" style="display:none;">
+            <strong>Baseline survival used:</strong>
+            <span class="mono" id="baselineUsed"></span>
+          </div>
+
+          <div id="tenYearNote" class="callout" style="display:none;">
+            <strong>10-year risk not computed:</strong> S₀(10y) is not available from the KM you shared (it only goes to 5y).
+            Add S₀(10y) in the code when you have it.
+          </div>
+
+          <div class="callout">
+            <strong>Privacy:</strong> Calculations occur on this device; no server calls are made.
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+<script>
+/**
+ * =========================
+ * 1) MODEL + BASELINE SURVIVAL
+ * =========================
+ * Cox model:
+ *   LP = −0.0808·VO2 + 0.0104·VEVCO2 − 0.0117·HR + 0.0141·Age
+ *   Risk(t) = 1 − S0(t) ^ exp(LP)
+ */
+
+// Coefficients from your screenshot
+const COEF = {
+  b_vo2: -0.0808,
+  b_vevco2: 0.0104,
+  b_hr: -0.0117,
+  b_age: 0.0141
+};
+
+// Baseline survival S0(t) values.
+// These are APPROXIMATE values visually read from the provided KM (0–5 years).
+// Replace with exact model-derived baseline survival if you have it.
+const BASELINE_SURVIVAL = {
+  y1: 0.992,
+  y3: 0.982,
+  y5: 0.970,
+  // y10: 0.???  // Add S0(10y) when available
+};
+
+// Optional: risk bands for headline label (edit thresholds if you want)
+function bandFromRisk(p){
+  if (p < 0.05) return { label: "Lower risk", interp: "Estimated absolute risk is low in absolute terms. Interpret in clinical context." };
+  if (p < 0.15) return { label: "Intermediate risk", interp: "Estimated risk is moderate. Consider patient context and modifiable contributors." };
+  return { label: "Higher risk", interp: "Estimated risk is high. Consider closer follow-up and review of potentially modifiable factors." };
+}
+
+function computeLP({age, vo2, hr, vevco2}){
+  return (
+    COEF.b_vo2 * vo2 +
+    COEF.b_vevco2 * vevco2 +
+    COEF.b_hr * hr +
+    COEF.b_age * age
+  );
+}
+
+function mortalityFromS0(lp, S0){
+  // Risk(t) = 1 - S0(t) ^ exp(LP)
+  return 1 - Math.pow(S0, Math.exp(lp));
+}
+
+/**
+ * =========================
+ * 2) UI HELPERS
+ * =========================
+ */
+const el = (id) => document.getElementById(id);
+
+function isFiniteNumber(x){
+  return Number.isFinite(x) && !Number.isNaN(x);
+}
+
+function getInputs(){
+  const age = Number(el("age").value);
+  const vo2 = Number(el("vo2").value);
+  const hr = Number(el("hr").value);
+  const vevco2 = Number(el("vevco2").value);
+
+  // Basic validation: all present + finite
+  if (![age, vo2, hr, vevco2].every(isFiniteNumber)) return null;
+  if (age <= 0 || vo2 <= 0 || hr <= 0 || vevco2 <= 0) return null;
+
+  return { age, vo2, hr, vevco2 };
+}
+
+function pct(x, digits=1){
+  return (x*100).toFixed(digits) + "%";
+}
+function clamp01(x){
+  return Math.max(0, Math.min(1, x));
+}
+
+function setText(id, text){
+  el(id).textContent = text;
+}
+
+/**
+ * =========================
+ * 3) MAIN CALCULATION
+ * =========================
+ */
+el("calcBtn").addEventListener("click", () => {
+  const inputs = getInputs();
+  if (!inputs){
+    alert("Please enter all four inputs (non-zero) with correct units.");
+    return;
+  }
+
+  const lp = computeLP(inputs);
+
+  // Compute 1/3/5 using available baseline survival
+  const r1 = mortalityFromS0(lp, BASELINE_SURVIVAL.y1);
+  const r3 = mortalityFromS0(lp, BASELINE_SURVIVAL.y3);
+  const r5 = mortalityFromS0(lp, BASELINE_SURVIVAL.y5);
+
+  // 10-year only if provided
+  const has10 = typeof BASELINE_SURVIVAL.y10 === "number" && isFiniteNumber(BASELINE_SURVIVAL.y10) && BASELINE_SURVIVAL.y10 > 0 && BASELINE_SURVIVAL.y10 <= 1;
+  const r10 = has10 ? mortalityFromS0(lp, BASELINE_SURVIVAL.y10) : null;
+
+  // Clamp to [0,1] to avoid tiny numerical drift
+  const rr1 = clamp01(r1), rr3 = clamp01(r3), rr5 = clamp01(r5), rr10 = (r10==null ? null : clamp01(r10));
+
+  // Headline: default to 5y if available
+  setText("headlineRisk", `5-year mortality: ${pct(rr5)}`);
+
+  const { label, interp } = bandFromRisk(rr5);
+  setText("riskBand", label);
+  setText("interp", interp);
+
+  // Table values
+  setText("m1", pct(rr1));
+  setText("s1", pct(1-rr1));
+
+  setText("m3", pct(rr3));
+  setText("s3", pct(1-rr3));
+
+  setText("m5", pct(rr5));
+  setText("s5", pct(1-rr5));
+
+  if (rr10 == null){
+    setText("m10", "—");
+    setText("s10", "—");
+    el("tenYearNote").style.display = "block";
+  } else {
+    setText("m10", pct(rr10));
+    setText("s10", pct(1-rr10));
+    el("tenYearNote").style.display = "none";
+  }
+
+  // LP
+  setText("lp", lp.toFixed(3));
+
+  // Show baseline used
+  const baselineStr =
+    `S₀(1y)=${BASELINE_SURVIVAL.y1}, ` +
+    `S₀(3y)=${BASELINE_SURVIVAL.y3}, ` +
+    `S₀(5y)=${BASELINE_SURVIVAL.y5}` +
+    (has10 ? `, S₀(10y)=${BASELINE_SURVIVAL.y10}` : "");
+  setText("baselineUsed", baselineStr);
+  el("baselineNote").style.display = "block";
+
+  // Reveal output
+  el("emptyState").style.display = "none";
+  el("result").style.display = "block";
+});
+
+el("resetBtn").addEventListener("click", () => {
+  ["age","vo2","hr","vevco2"].forEach(id => el(id).value = "");
+  el("result").style.display = "none";
+  el("emptyState").style.display = "block";
+  el("tenYearNote").style.display = "none";
+  el("baselineNote").style.display = "none";
+});
+
+el("copyBtn").addEventListener("click", async () => {
+  const inputs = getInputs();
+  if (!inputs){
+    alert("Enter values first, then copy.");
+    return;
+  }
+  const lp = computeLP(inputs);
+  const r1 = clamp01(mortalityFromS0(lp, BASELINE_SURVIVAL.y1));
+  const r3 = clamp01(mortalityFromS0(lp, BASELINE_SURVIVAL.y3));
+  const r5 = clamp01(mortalityFromS0(lp, BASELINE_SURVIVAL.y5));
+  const has10 = typeof BASELINE_SURVIVAL.y10 === "number" && isFiniteNumber(BASELINE_SURVIVAL.y10) && BASELINE_SURVIVAL.y10 > 0 && BASELINE_SURVIVAL.y10 <= 1;
+  const r10 = has10 ? clamp01(mortalityFromS0(lp, BASELINE_SURVIVAL.y10)) : null;
+
+  const summary =
+`ACHD CPET mortality calculator
+Inputs: Age ${inputs.age} y; Peak VO2 ${inputs.vo2} mL/kg/min; Peak HR ${inputs.hr} bpm; VE/VCO2 slope ${inputs.vevco2}
+LP: ${lp.toFixed(3)}
+Mortality: 1y ${pct(r1)}; 3y ${pct(r3)}; 5y ${pct(r5)}${r10==null ? "" : `; 10y ${pct(r10)}`}
+Baseline: S0(1y)=${BASELINE_SURVIVAL.y1}, S0(3y)=${BASELINE_SURVIVAL.y3}, S0(5y)=${BASELINE_SURVIVAL.y5}${has10 ? `, S0(10y)=${BASELINE_SURVIVAL.y10}` : ""}`;
+
+  try {
+    await navigator.clipboard.writeText(summary);
+    alert("Copied to clipboard.");
+  } catch {
+    alert("Could not copy automatically in this browser. You can manually select and copy the output.");
+  }
+});
+</script>
+</body>
+</html>
