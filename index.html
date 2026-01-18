@@ -248,9 +248,11 @@ const BASELINE_SURVIVAL = {
 
 // Optional: risk bands for headline label (edit thresholds if you want)
 function bandFromRisk(p){
-  if (p < 0.05) return { label: "Lower risk", interp: "Estimated absolute risk is low in absolute terms. Interpret in clinical context." };
-  if (p < 0.15) return { label: "Intermediate risk", interp: "Estimated risk is moderate. Consider patient context and modifiable contributors." };
-  return { label: "Higher risk", interp: "Estimated risk is high. Consider closer follow-up and review of potentially modifiable factors." };
+  // Risk groups based on predicted 5-year mortality:
+  // Low <1%, Intermediate 1–2.5%, High >2.5%
+  if (p < 0.01)  return { label: "Low risk (<1%)", interp: "Predicted 5-year mortality is <1% (paper-defined low-risk group)." };
+  if (p < 0.025) return { label: "Intermediate risk (1–2.5%)", interp: "Predicted 5-year mortality is 1–2.5% (paper-defined intermediate-risk group)." };
+  return { label: "High risk (>2.5%)", interp: "Predicted 5-year mortality is >2.5% (paper-defined high-risk group)." };
 }
 
 function computeLP({age, vo2, hr, vevco2}){
