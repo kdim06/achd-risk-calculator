@@ -257,12 +257,13 @@ function bandFromRisk(p){
 
 function computeLP({age, vo2, hr, vevco2}){
   return (
-    COEF.b_vo2 * vo2 +
-    COEF.b_vevco2 * vevco2 +
-    COEF.b_hr * hr +
-    COEF.b_age * age
+    COEF.b_vo2 * (vo2 - 26.9) +
+    COEF.b_vevco2 * (vevco2 - 32.7) +
+    COEF.b_hr * (hr - 163.7) +
+    COEF.b_age * (age - 32.5)
   );
 }
+
 
 function mortalityFromS0(lp, S0){
   // Risk(t) = 1 - S0(t) ^ exp(LP)
